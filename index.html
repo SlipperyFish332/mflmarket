@@ -344,13 +344,16 @@ async function loadProgressionData() {
 // ─── FETCH MFL LISTINGS (paginated) ──────────────────────────────────────────
 async function loadListings() {
   listings = [];
-  let offset = 0;
   let page = 1;
 
   document.getElementById('last-updated').textContent = `Loading listings...`;
 
+  let lastResourceId = null;
+
   while (true) {
-    const url = `${MFL_LISTINGS_BASE}&offset=${offset}`;
+    let url = MFL_LISTINGS_BASE;
+    if (lastResourceId) url += `&lastListingResourceId=${lastResourceId}`;
+
     const res = await fetch(`${PROXY}/?url=${encodeURIComponent(url)}`);
     if (!res.ok) throw new Error(`MFL API error: ${res.status}`);
     const data = await res.json();
@@ -364,11 +367,11 @@ async function loadListings() {
     document.getElementById('last-updated').textContent = `Loading... ${listings.length} listings`;
 
     if (items.length < 25) break; // last page
-    offset += 25;
+    lastResourceId = items[items.length - 1].listingResourceId;
     page++;
 
     // Small delay to be polite to the API
-    await new Promise(r => setTimeout(r, 150));
+    await new Promise(r => setTimeout(r, 200));
   }
 
   document.getElementById('last-updated').textContent = `Updated ${new Date().toLocaleTimeString()}`;
