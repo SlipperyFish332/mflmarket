@@ -290,6 +290,7 @@
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
 const SUPABASE_URL = 'https://dmaadocmrhfzbhweznil.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_NLKRB2kFO6J1DckCJP1Jlw_Pu2nR4bO';
+const PROXY = 'https://mfl-proxy.kustom2-02.workers.dev';
 const MFL_LISTINGS_BASE = 'https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/listings?limit=25&type=PLAYER&status=AVAILABLE&view=full';
 const PAGE_SIZE = 50;
 const hdrs = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` };
@@ -350,7 +351,7 @@ async function loadListings() {
 
   while (true) {
     const url = `${MFL_LISTINGS_BASE}&offset=${offset}`;
-    const res = await fetch(url);
+    const res = await fetch(`${PROXY}/?url=${encodeURIComponent(url)}`);
     if (!res.ok) throw new Error(`MFL API error: ${res.status}`);
     const data = await res.json();
 
