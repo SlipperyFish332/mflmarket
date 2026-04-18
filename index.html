@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MFL Marketplace Scout</title>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #080c10;
+      --surface: #0e1419;
+      --surface2: #141c24;
+      --surface3: #1a242e;
+      --border: #1e2c38;
+      --border2: #243344;
+      --text: #e8f0f8;
+      --text-muted: #5a7a95;
+      --text-dim: #3a5570;
+      --green: #00e87a;
+      --green-dim: rgba(0,232,122,0.12);
+      --red: #ff4757;
+      --red-dim: rgba(255,71,87,0.12);
+      --yellow: #ffd32a;
+      --yellow-dim: rgba(255,211,42,0.1);
+      --blue: #3dc9f5;
+      --blue-dim: rgba(61,201,245,0.1);
+      --orange: #ff9f43;
+      --purple: #a29bfe;
+      --accent: #00e87a;
+      --gold: #ffd32a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Barlow', sans-serif; min-height: 100vh; }
+
+    /* HEADER */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      gap: 1rem;
+    }
+    .logo { font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 1.4rem; letter-spacing: .06em; color: var(--green); text-transform: uppercase; }
+    .logo span { color: var(--text); font-weight: 600; }
+    .header-meta { font-size: .72rem; color: var(--text-muted); text-align: right; line-height: 1.7; }
+    .live-dot { display: inline-block; width: 6px; height: 6px; background: var(--green); border-radius: 50%; margin-right: 4px; animation: pulse 2s ease-in-out infinite; vertical-align: middle; }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:.5;transform:scale(.8);} }
+    .refresh-btn { background: transparent; border: 1px solid var(--border2); color: var(--text-muted); padding: .3rem .75rem; border-radius: 4px; cursor: pointer; font-size: .72rem; font-family: 'Barlow', sans-serif; transition: all .15s; }
+    .refresh-btn:hover { border-color: var(--green); color: var(--green); }
+
+    /* FILTERS */
+    .filters-bar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: .9rem 2rem;
+      display: flex;
+      gap: .75rem;
+      flex-wrap: wrap;
+      align-items: flex-end;
+    }
+    .fg { display: flex; flex-direction: column; gap: .3rem; }
+    .fg label { font-size: .65rem; text-transform: uppercase; letter-spacing: .1em; color: var(--text-muted); font-weight: 600; }
+    select, input[type=number], input[type=text] {
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      color: var(--text);
+      padding: .45rem .7rem;
+      border-radius: 5px;
+      font-family: 'Barlow', sans-serif;
+      font-size: .82rem;
+      outline: none;
+      transition: border-color .15s;
+    }
+    select:focus, input:focus { border-color: var(--green); }
+    select { min-width: 120px; cursor: pointer; }
+    input[type=number] { width: 90px; }
+    .btn-reset { background: var(--surface2); border: 1px solid var(--border2); color: var(--text-muted); padding: .45rem 1rem; border-radius: 5px; cursor: pointer; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: .82rem; text-transform: uppercase; letter-spacing: .05em; transition: all .15s; align-self: flex-end; }
+    .btn-reset:hover { border-color: var(--border); color: var(--text); }
+
+    /* PROGRESS FILTER TOGGLE */
+    .prog-toggle { display: flex; gap: .4rem; align-self: flex-end; }
+    .ptog { padding: .45rem .9rem; border-radius: 5px; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; cursor: pointer; border: 1px solid var(--border2); background: var(--surface2); color: var(--text-muted); transition: all .15s; }
+    .ptog.active-green { background: var(--green-dim); border-color: var(--green); color: var(--green); }
+    .ptog.active-any { background: var(--blue-dim); border-color: var(--blue); color: var(--blue); }
+    .ptog.active-none { background: var(--red-dim); border-color: var(--red); color: var(--red); }
+
+    /* MAIN */
+    .main { padding: 1.5rem 2rem; max-width: 1800px; margin: 0 auto; }
+
+    /* STATS ROW */
+    .stats-row { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+    .stat-chip { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: .75rem 1.25rem; display: flex; flex-direction: column; gap: .2rem; min-width: 120px; }
+    .stat-chip .sc-label { font-size: .65rem; text-transform: uppercase; letter-spacing: .1em; color: var(--text-muted); }
+    .stat-chip .sc-val { font-family: 'Barlow Condensed', sans-serif; font-size: 1.5rem; font-weight: 800; color: var(--green); }
+
+    /* TABLE */
+    .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .table-top { padding: .9rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
+    .table-top h2 { font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 1rem; text-transform: uppercase; letter-spacing: .08em; }
+    .result-count { font-size: .75rem; color: var(--text-muted); }
+    .table-scroll { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+    thead th {
+      background: var(--surface2);
+      padding: .65rem .9rem;
+      text-align: left;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 700;
+      font-size: .7rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+      transition: color .15s;
+    }
+    thead th:hover { color: var(--text); }
+    thead th.sorted { color: var(--green); }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--surface2); }
+    td { padding: .65rem .9rem; white-space: nowrap; vertical-align: middle; }
+
+    /* PLAYER CELL */
+    .player-cell { display: flex; flex-direction: column; gap: 1px; }
+    .player-name { font-weight: 600; font-size: .85rem; color: var(--text); }
+    .player-sub { font-size: .7rem; color: var(--text-muted); }
+    .player-link { font-size: .65rem; color: var(--blue); text-decoration: none; opacity: .7; transition: opacity .15s; }
+    .player-link:hover { opacity: 1; }
+
+    /* BADGES */
+    .pos-badge { display: inline-block; padding: 2px 7px; border-radius: 3px; font-size: .68rem; font-weight: 700; font-family: 'Barlow Condensed', sans-serif; letter-spacing: .05em; text-transform: uppercase; background: rgba(61,201,245,.1); color: var(--blue); border: 1px solid rgba(61,201,245,.2); }
+    .listed-time { font-size: .75rem; color: var(--text-muted); white-space: nowrap; }
+    .ovr-num { font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 1.05rem; }
+    .price-val { font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 1.05rem; color: var(--gold); }
+    .type-sale { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: .65rem; font-weight: 700; font-family: 'Barlow Condensed', sans-serif; background: rgba(0,232,122,.1); color: var(--green); border: 1px solid rgba(0,232,122,.2); }
+    .type-offer { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: .65rem; font-weight: 700; font-family: 'Barlow Condensed', sans-serif; background: var(--yellow-dim); color: var(--yellow); border: 1px solid rgba(255,211,42,.2); }
+
+    /* PROGRESSION */
+    .prog-cell { display: flex; flex-direction: column; gap: 3px; min-width: 180px; }
+    .prog-no-data { font-size: .72rem; color: var(--text-dim); font-style: italic; }
+    .prog-loading { font-size: .72rem; color: var(--text-dim); }
+    .prog-summary { display: flex; gap: .4rem; flex-wrap: wrap; align-items: center; }
+    .stat-change { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: .78rem; display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 32px; }
+    .stat-change .sc-name { font-size: .55rem; color: var(--text-muted); font-weight: 600; letter-spacing: .06em; }
+    .stat-change .sc-num { font-size: .85rem; }
+    .sc-up { color: var(--green); }
+    .sc-down { color: var(--red); }
+    .sc-zero { color: var(--text-dim); }
+    .prog-total-badge {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 800;
+      font-size: .82rem;
+      padding: 2px 8px;
+      border-radius: 4px;
+      letter-spacing: .03em;
+    }
+    .ptb-up { background: var(--green-dim); color: var(--green); border: 1px solid rgba(0,232,122,.25); }
+    .ptb-zero { background: var(--surface3); color: var(--text-muted); border: 1px solid var(--border2); }
+    .ptb-down { background: var(--red-dim); color: var(--red); border: 1px solid rgba(255,71,87,.2); }
+    .ovr-change { font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: .9rem; }
+
+    /* LOADING */
+    .loading-screen { text-align: center; padding: 4rem 2rem; }
+    .spinner { width: 36px; height: 36px; border: 2px solid var(--border2); border-top-color: var(--green); border-radius: 50%; margin: 0 auto 1.25rem; animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-screen h3 { font-family: 'Barlow Condensed', sans-serif; font-size: 1.2rem; color: var(--text-muted); margin-bottom: .5rem; }
+    .loading-screen p { font-size: .8rem; color: var(--text-dim); }
+
+    /* EMPTY */
+    .empty { text-align: center; padding: 3rem; color: var(--text-muted); font-size: .85rem; }
+
+    /* PAGINATION */
+    .pagination { display: flex; justify-content: center; align-items: center; gap: .5rem; padding: 1rem; border-top: 1px solid var(--border); }
+    .page-btn { background: var(--surface2); border: 1px solid var(--border2); color: var(--text-muted); padding: .4rem .75rem; border-radius: 4px; cursor: pointer; font-size: .78rem; transition: all .15s; }
+    .page-btn:hover:not(:disabled) { background: var(--green-dim); border-color: var(--green); color: var(--green); }
+    .page-btn:disabled { opacity: .3; cursor: not-allowed; }
+    .page-info { font-size: .75rem; color: var(--text-muted); padding: 0 .5rem; }
+
+    /* ERROR */
+    .error-bar { background: rgba(255,71,87,.08); border: 1px solid rgba(255,71,87,.2); color: var(--red); padding: .75rem 1.25rem; border-radius: 6px; margin-bottom: 1.25rem; font-size: .82rem; display: none; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">MFL <span>Market Scout</span></div>
+    <div style="font-size:.7rem;color:var(--text-muted);margin-top:2px;">Live listings + Season progression data</div>
+  </div>
+  <div class="header-meta">
+    <div><span class="live-dot"></span> <span id="last-updated">Loading...</span></div>
+    <button class="refresh-btn" onclick="init()">↺ Refresh</button>
+  </div>
+</header>
+
+<div class="filters-bar">
+  <div class="fg">
+    <label>Position</label>
+    <select id="f-pos" onchange="applyFilters()">
+      <option value="">All</option>
+      <option>GK</option><option>CB</option><option>LB</option><option>RB</option>
+      <option>LWB</option><option>RWB</option><option>CDM</option><option>CM</option>
+      <option>CAM</option><option>LM</option><option>RM</option><option>LW</option>
+      <option>RW</option><option>CF</option><option>ST</option>
+    </select>
+  </div>
+  <div class="fg">
+    <label>Min OVR</label>
+    <input type="number" id="f-min-ovr" placeholder="e.g. 70" min="0" max="99" oninput="applyFilters()" />
+  </div>
+  <div class="fg">
+    <label>Max OVR</label>
+    <input type="number" id="f-max-ovr" placeholder="e.g. 99" min="0" max="99" oninput="applyFilters()" />
+  </div>
+  <div class="fg">
+    <label>Max Age</label>
+    <input type="number" id="f-max-age" placeholder="e.g. 28" min="15" max="45" oninput="applyFilters()" />
+  </div>
+  <div class="fg">
+    <label>Max Price (Flow)</label>
+    <input type="number" id="f-max-price" placeholder="e.g. 50" min="0" step="0.1" oninput="applyFilters()" />
+  </div>
+  <div class="fg">
+    <label>Min OVR Change</label>
+    <input type="number" id="f-min-ovr-change" placeholder="e.g. 1" min="0" oninput="applyFilters()" />
+  </div>
+  <div class="fg">
+    <label>Seller</label>
+    <input type="text" id="f-seller" placeholder="Name..." oninput="applyFilters()" style="width:120px" />
+  </div>
+  <div class="fg">
+    <label>Progression</label>
+    <div class="prog-toggle">
+      <button class="ptog" id="ptog-any" onclick="setProgFilter('any')">Any</button>
+      <button class="ptog" id="ptog-improved" onclick="setProgFilter('improved')">Improved</button>
+      <button class="ptog" id="ptog-none" onclick="setProgFilter('none')">No Data</button>
+    </div>
+  </div>
+  <div class="fg">
+    <label>Sort</label>
+    <select id="f-sort" onchange="applyFilters()">
+      <option value="date">Date (newest)</option>
+      <option value="price_asc">Price (low)</option>
+      <option value="price_desc">Price (high)</option>
+      <option value="overall">Overall (high)</option>
+      <option value="ovr_change">OVR Change (high)</option>
+      <option value="total_change">Total Change (high)</option>
+    </select>
+  </div>
+  <button class="btn-reset" onclick="resetFilters()">Reset</button>
+</div>
+
+<div class="main">
+  <div class="stats-row">
+    <div class="stat-chip"><div class="sc-label">Listings</div><div class="sc-val" id="s-total">—</div></div>
+    <div class="stat-chip"><div class="sc-label">Showing</div><div class="sc-val" id="s-showing">—</div></div>
+    <div class="stat-chip"><div class="sc-label">With Prog Data</div><div class="sc-val" id="s-with-data">—</div></div>
+    <div class="stat-chip"><div class="sc-label">Improved This Season</div><div class="sc-val" id="s-improved">—</div></div>
+    <div class="stat-chip"><div class="sc-label">DB Players Loaded</div><div class="sc-val" id="s-db">—</div></div>
+  </div>
+
+  <div id="error-bar" class="error-bar"></div>
+
+  <div class="table-wrap">
+    <div class="table-top">
+      <h2>Live Marketplace Listings</h2>
+      <span class="result-count" id="result-count"></span>
+    </div>
+    <div class="table-scroll">
+      <div id="table-container">
+        <div class="loading-screen">
+          <div class="spinner"></div>
+          <h3>Loading marketplace...</h3>
+          <p>Fetching listings and progression data</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── CONFIG ──────────────────────────────────────────────────────────────────
+const SUPABASE_URL = 'https://dmaadocmrhfzbhweznil.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_NLKRB2kFO6J1DckCJP1Jlw_Pu2nR4bO';
+const MFL_LISTINGS_BASE = 'https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/listings?limit=25&type=PLAYER&status=AVAILABLE&view=full';
+const PAGE_SIZE = 50;
+const hdrs = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` };
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let listings = [];
+let filteredListings = [];
+let progMap = {}; // player_id -> { sos, current, changes }
+let currentPage = 1;
+let progFilter = 'any';
+let dbLoaded = false;
+
+// ─── FETCH SUPABASE PROGRESSION DATA ─────────────────────────────────────────
+async function loadProgressionData() {
+  try {
+    const [sosRes, curRes] = await Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/mfl_players_sos?select=ID,overall,pace,shooting,passing,dribbling,defense,physical&limit=5000`, { headers: hdrs }),
+      fetch(`${SUPABASE_URL}/rest/v1/mfl_players_current?select=ID,overall,pace,shooting,passing,dribbling,defense,physical&limit=5000`, { headers: hdrs }),
+    ]);
+    if (!sosRes.ok || !curRes.ok) throw new Error('Supabase error');
+    const [sos, cur] = await Promise.all([sosRes.json(), curRes.json()]);
+
+    const sosById = {};
+    sos.forEach(p => sosById[p.ID] = p);
+
+    progMap = {};
+    cur.forEach(p => {
+      const s = sosById[p.ID];
+      if (!s) return;
+      const changes = {
+        overall:   (p.overall   || 0) - (s.overall   || 0),
+        pace:      (p.pace      || 0) - (s.pace      || 0),
+        shooting:  (p.shooting  || 0) - (s.shooting  || 0),
+        passing:   (p.passing   || 0) - (s.passing   || 0),
+        dribbling: (p.dribbling || 0) - (s.dribbling || 0),
+        defense:   (p.defense   || 0) - (s.defense   || 0),
+        physical:  (p.physical  || 0) - (s.physical  || 0),
+      };
+      const total = Object.values(changes).filter(v => v > 0).reduce((a,b) => a+b, 0);
+      progMap[p.ID] = { changes, total, sos_overall: s.overall, cur_overall: p.overall };
+    });
+
+    dbLoaded = true;
+    document.getElementById('s-db').textContent = Object.keys(progMap).length.toLocaleString();
+  } catch(e) {
+    console.warn('Progression data failed:', e.message);
+    document.getElementById('s-db').textContent = 'Error';
+  }
+}
+
+// ─── FETCH MFL LISTINGS (paginated) ──────────────────────────────────────────
+async function loadListings() {
+  listings = [];
+  let offset = 0;
+  let page = 1;
+
+  document.getElementById('last-updated').textContent = `Loading listings...`;
+
+  while (true) {
+    const url = `${MFL_LISTINGS_BASE}&offset=${offset}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`MFL API error: ${res.status}`);
+    const data = await res.json();
+
+    // Response is an object with numeric keys {0:{...}, 1:{...}, ...}
+    const items = Object.values(data).filter(v => v && typeof v === 'object' && v.listingResourceId);
+    if (!items.length) break;
+
+    listings = listings.concat(items);
+    document.getElementById('s-total').textContent = listings.length.toLocaleString();
+    document.getElementById('last-updated').textContent = `Loading... ${listings.length} listings`;
+
+    if (items.length < 25) break; // last page
+    offset += 25;
+    page++;
+
+    // Small delay to be polite to the API
+    await new Promise(r => setTimeout(r, 150));
+  }
+
+  document.getElementById('last-updated').textContent = `Updated ${new Date().toLocaleTimeString()}`;
+}
+
+// ─── FILTERS ─────────────────────────────────────────────────────────────────
+function getFilters() {
+  return {
+    pos: document.getElementById('f-pos').value,
+    minOvr: parseInt(document.getElementById('f-min-ovr').value) || 0,
+    maxOvr: parseInt(document.getElementById('f-max-ovr').value) || 999,
+    maxAge: parseInt(document.getElementById('f-max-age').value) || 999,
+    maxPrice: parseFloat(document.getElementById('f-max-price').value) || 999999,
+    minOvrChange: parseInt(document.getElementById('f-min-ovr-change').value) || 0,
+    seller: document.getElementById('f-seller').value.toLowerCase().trim(),
+    sort: document.getElementById('f-sort').value,
+  };
+}
+
+function setProgFilter(val) {
+  progFilter = val;
+  document.querySelectorAll('.ptog').forEach(b => {
+    b.classList.remove('active-green','active-any','active-none');
+  });
+  if (val === 'improved') document.getElementById('ptog-improved').classList.add('active-green');
+  else if (val === 'none') document.getElementById('ptog-none').classList.add('active-none');
+  else document.getElementById('ptog-any').classList.add('active-any');
+  applyFilters();
+}
+
+function applyFilters() {
+  const f = getFilters();
+  currentPage = 1;
+
+  filteredListings = listings.filter(l => {
+    const m = l.player?.metadata || {};
+    const pid = l.player?.id;
+    const prog = progMap[pid];
+    const positions = m.positions || [];
+
+    if (f.pos && !positions.some(p => p === f.pos)) return false;
+    if ((m.overall || 0) < f.minOvr) return false;
+    if ((m.overall || 0) > f.maxOvr) return false;
+    if ((m.age || 0) > f.maxAge) return false;
+    if ((l.price || 0) > f.maxPrice) return false;
+    if (f.seller && !(l.sellerName || '').toLowerCase().includes(f.seller)) return false;
+    if (f.minOvrChange && (!prog || prog.changes.overall < f.minOvrChange)) return false;
+
+    if (progFilter === 'improved' && (!prog || prog.total <= 0)) return false;
+    if (progFilter === 'none' && prog) return false;
+
+    return true;
+  });
+
+  // Sort
+  filteredListings.sort((a, b) => {
+    const ma = a.player?.metadata || {}, mb = b.player?.metadata || {};
+    const pa = progMap[a.player?.id], pb = progMap[b.player?.id];
+    switch(f.sort) {
+      case 'price_asc':    return (a.price||0) - (b.price||0);
+      case 'price_desc':   return (b.price||0) - (a.price||0);
+      case 'overall':      return (mb.overall||0) - (ma.overall||0);
+      case 'ovr_change':   return (pb?.changes.overall||0) - (pa?.changes.overall||0);
+      case 'total_change': return (pb?.total||0) - (pa?.total||0);
+      default:             return 0; // date order from API
+    }
+  });
+
+  // Stats
+  const withData = filteredListings.filter(l => progMap[l.player?.id]).length;
+  const improved = filteredListings.filter(l => {
+    const prog = progMap[l.player?.id];
+    return prog && prog.total > 0;
+  }).length;
+  document.getElementById('s-showing').textContent = filteredListings.length.toLocaleString();
+  document.getElementById('s-with-data').textContent = withData.toLocaleString();
+  document.getElementById('s-improved').textContent = improved.toLocaleString();
+  document.getElementById('result-count').textContent = `${filteredListings.length} listings`;
+
+  renderTable();
+}
+
+function resetFilters() {
+  document.getElementById('f-pos').value = '';
+  document.getElementById('f-min-ovr').value = '';
+  document.getElementById('f-max-ovr').value = '';
+  document.getElementById('f-max-age').value = '';
+  document.getElementById('f-max-price').value = '';
+  document.getElementById('f-min-ovr-change').value = '';
+  document.getElementById('f-seller').value = '';
+  document.getElementById('f-sort').value = 'date';
+  progFilter = 'any';
+  document.querySelectorAll('.ptog').forEach(b => b.classList.remove('active-green','active-any','active-none'));
+  document.getElementById('ptog-any').classList.add('active-any');
+  applyFilters();
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function fmtListed(ts) {
+  if (!ts) return '—';
+  const now = Date.now();
+  const diff = now - ts;
+  const mins = Math.floor(diff / 60000);
+  const hrs = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${days}d ago`;
+}
+
+function changeTag(val, label) {
+  if (val === 0) return `<div class="stat-change"><span class="sc-name">${label}</span><span class="sc-num sc-zero">—</span></div>`;
+  const cls = val > 0 ? 'sc-up' : 'sc-down';
+  const txt = val > 0 ? `+${val}` : `${val}`;
+  return `<div class="stat-change"><span class="sc-name">${label}</span><span class="sc-num ${cls}">${txt}</span></div>`;
+}
+
+function renderProgression(pid) {
+  const prog = progMap[pid];
+  if (!prog) return `<span class="prog-no-data">No data</span>`;
+
+  const { changes, total, sos_overall, cur_overall } = prog;
+  const ovrChange = changes.overall;
+  const totalBadgeCls = total > 0 ? 'ptb-up' : 'ptb-zero';
+  const ovrCls = ovrChange > 0 ? 'sc-up' : ovrChange < 0 ? 'sc-down' : 'sc-zero';
+
+  // Only show non-zero stat changes (except overall which always shows)
+  const statCols = [
+    ['PAC', changes.pace],
+    ['SHO', changes.shooting],
+    ['PAS', changes.passing],
+    ['DRI', changes.dribbling],
+    ['DEF', changes.defense],
+    ['PHY', changes.physical],
+  ].filter(([, v]) => v !== 0);
+
+  return `<div class="prog-cell">
+    <div class="prog-summary">
+      <span class="prog-total-badge ${totalBadgeCls}">+${total} total</span>
+      <div class="stat-change">
+        <span class="sc-name">OVR</span>
+        <span class="sc-num ${ovrCls}">${ovrChange > 0 ? '+' : ''}${ovrChange} <span style="font-size:.65rem;font-weight:400;color:var(--text-muted)">(${sos_overall}→${cur_overall})</span></span>
+      </div>
+      ${statCols.map(([l,v]) => changeTag(v, l)).join('')}
+    </div>
+  </div>`;
+}
+
+function renderTable() {
+  if (!filteredListings.length) {
+    document.getElementById('table-container').innerHTML = '<div class="empty">No listings match your filters</div>';
+    return;
+  }
+
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const page = filteredListings.slice(start, start + PAGE_SIZE);
+  const totalPages = Math.ceil(filteredListings.length / PAGE_SIZE);
+
+  const rows = page.map(l => {
+    const m = l.player?.metadata || {};
+    const pid = l.player?.id;
+    const positions = (m.positions || []).join(', ') || '—';
+    const name = `${m.firstName || ''} ${m.lastName || ''}`.trim() || `Player ${pid}`;
+    const typeBadge = l.type === 'SALE'
+      ? `<span class="type-sale">Sale</span>`
+      : `<span class="type-offer">Offer</span>`;
+
+    return `<tr>
+      <td>
+        <div class="player-cell">
+          <span class="player-name">${name}</span>
+          <span class="player-sub">${m.nationality || '—'} · Age ${m.age || '—'}</span>
+          <a class="player-link" href="https://app.playmfl.com/players/${pid}" target="_blank" rel="noopener">View on MFL ↗</a>
+        </div>
+      </td>
+      <td><span class="pos-badge">${positions}</span></td>
+      <td><span class="ovr-num">${m.overall || '—'}</span></td>
+      <td>${typeBadge}</td>
+      <td><span class="price-val">${l.price ?? '—'}</span></td>
+      <td class="listed-time" data-ts="${l.createdDateTime || 0}">${fmtListed(l.createdDateTime)}</td>
+      <td>${l.sellerName || '—'}</td>
+      <td>${renderProgression(pid)}</td>
+    </tr>`;
+  }).join('');
+
+  const pagination = totalPages > 1 ? `<div class="pagination">
+    <button class="page-btn" onclick="changePage(${currentPage-1})" ${currentPage===1?'disabled':''}>← Prev</button>
+    <span class="page-info">Page ${currentPage} of ${totalPages}</span>
+    <button class="page-btn" onclick="changePage(${currentPage+1})" ${currentPage===totalPages?'disabled':''}>Next →</button>
+  </div>` : '';
+
+  document.getElementById('table-container').innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Player</th>
+          <th>Position</th>
+          <th>OVR</th>
+          <th>Type</th>
+          <th>Price (Flow)</th>
+          <th>Listed</th>
+          <th>Seller</th>
+          <th>Season Progression</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+    ${pagination}`;
+}
+
+function changePage(p) {
+  currentPage = p;
+  renderTable();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+async function init() {
+  document.getElementById('table-container').innerHTML = `
+    <div class="loading-screen">
+      <div class="spinner"></div>
+      <h3>Loading marketplace...</h3>
+      <p>Fetching live listings and season progression data</p>
+    </div>`;
+  document.getElementById('error-bar').style.display = 'none';
+
+  try {
+    await Promise.all([loadListings(), loadProgressionData()]);
+    setProgFilter('any');
+  } catch(e) {
+    document.getElementById('error-bar').textContent = `Error: ${e.message}`;
+    document.getElementById('error-bar').style.display = 'block';
+    document.getElementById('table-container').innerHTML = '<div class="empty">Failed to load data</div>';
+  }
+}
+
+init();
+</script>
+</body>
+</html>
