@@ -610,16 +610,18 @@ async function init() {
     </div>`;
   document.getElementById('error-bar').style.display = 'none';
 
-  // Load listings first, then progression (progression needs player IDs from listings)
-  await loadListings();
+  // Load listings first, then progression
+  const [listingsResult] = await Promise.allSettled([loadListings()]);
+  if (listingsResult.status === 'rejected') {
+    document.getElementById('error-bar').textContent = `Listings failed: ${listingsResult.reason.message}`;
+    document.getElementById('error-bar').style.display = 'block';
+  }
+
+  // Always try progression even if listings partially failed
   const [progResult] = await Promise.allSettled([loadProgressionData()]);
-  const listingsResult = { status: 'fulfilled' };
-
-  const errors = [];
-  if (progResult.status === 'rejected') errors.push(`Progression DB: ${progResult.reason.message}`);
-
-  if (errors.length) {
-    document.getElementById('error-bar').textContent = `Warning: ${errors.join(' · ')}`;
+  if (progResult.status === 'rejected') {
+    const prev = document.getElementById('error-bar').textContent;
+    document.getElementById('error-bar').textContent = prev ? prev + ` · DB: ${progResult.reason.message}` : `DB: ${progResult.reason.message}`;
     document.getElementById('error-bar').style.display = 'block';
   }
 
