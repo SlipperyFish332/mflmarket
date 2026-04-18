@@ -310,7 +310,8 @@ async function loadProgressionData() {
       fetch(`${SUPABASE_URL}/rest/v1/mfl_players_sos?select=ID,overall,pace,shooting,passing,dribbling,defense,physical&limit=5000`, { headers: hdrs }),
       fetch(`${SUPABASE_URL}/rest/v1/mfl_players_current?select=ID,overall,pace,shooting,passing,dribbling,defense,physical&limit=5000`, { headers: hdrs }),
     ]);
-    if (!sosRes.ok || !curRes.ok) throw new Error('Supabase error');
+    if (!sosRes.ok) throw new Error(`Supabase SOS error: ${sosRes.status} ${await sosRes.text()}`);
+    if (!curRes.ok) throw new Error(`Supabase current error: ${curRes.status} ${await curRes.text()}`);
     const [sos, cur] = await Promise.all([sosRes.json(), curRes.json()]);
 
     const sosById = {};
@@ -599,14 +600,23 @@ async function init() {
     </div>`;
   document.getElementById('error-bar').style.display = 'none';
 
-  try {
-    await Promise.all([loadListings(), loadProgressionData()]);
-    setProgFilter('any');
-  } catch(e) {
-    document.getElementById('error-bar').textContent = `Error: ${e.message}`;
+  // Load both independently — don't let one failure kill the other
+  const [listingsResult, progResult] = await Promise.allSettled([
+    loadListings(),
+    loadProgressionData()
+  ]);
+
+  const errors = [];
+  if (listingsResult.status === 'rejected') errors.push(`Listings: ${listingsResult.reason.message}`);
+  if (progResult.status === 'rejected') errors.push(`Progression DB: ${progResult.reason.message}`);
+
+  if (errors.length) {
+    document.getElementById('error-bar').textContent = `Warning: ${errors.join(' · ')}`;
     document.getElementById('error-bar').style.display = 'block';
-    document.getElementById('table-container').innerHTML = '<div class="empty">Failed to load data</div>';
   }
+
+  // Show whatever we managed to load
+  setProgFilter('any');
 }
 
 init();
