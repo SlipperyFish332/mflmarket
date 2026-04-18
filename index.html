@@ -304,14 +304,24 @@ let progFilter = 'any';
 let dbLoaded = false;
 
 // ─── FETCH SUPABASE PROGRESSION DATA ─────────────────────────────────────────
+// Only fetches the specific player IDs present in the current listings
 async function loadProgressionData() {
   try {
+    // Wait for listings to be available
+    const playerIds = listings.map(l => l.player?.id).filter(Boolean);
+    if (!playerIds.length) {
+      document.getElementById('s-db').textContent = '0';
+      return;
+    }
+
+    const idFilter = `ID=in.(${playerIds.join(',')})`;
+
     const [sosRes, curRes] = await Promise.all([
-      fetch(`${SUPABASE_URL}/rest/v1/mfl_players_sos?select=ID,overall,pace,shooting,passing,dribbling,defense,physical&limit=5000`, { headers: hdrs }),
-      fetch(`${SUPABASE_URL}/rest/v1/mfl_players_current?select=ID,overall,pace,shooting,passing,dribbling,defense,physical&limit=5000`, { headers: hdrs }),
+      fetch(`${SUPABASE_URL}/rest/v1/mfl_players_sos?select=ID,overall,pace,shooting,passing,dribbling,defense,physical&${idFilter}`, { headers: hdrs }),
+      fetch(`${SUPABASE_URL}/rest/v1/mfl_players_current?select=ID,overall,pace,shooting,passing,dribbling,defense,physical&${idFilter}`, { headers: hdrs }),
     ]);
-    if (!sosRes.ok) throw new Error(`Supabase SOS error: ${sosRes.status} ${await sosRes.text()}`);
-    if (!curRes.ok) throw new Error(`Supabase current error: ${curRes.status} ${await curRes.text()}`);
+    if (!sosRes.ok) throw new Error(`Supabase SOS error: ${sosRes.status}`);
+    if (!curRes.ok) throw new Error(`Supabase current error: ${curRes.status}`);
     const [sos, cur] = await Promise.all([sosRes.json(), curRes.json()]);
 
     const sosById = {};
@@ -338,7 +348,7 @@ async function loadProgressionData() {
     document.getElementById('s-db').textContent = Object.keys(progMap).length.toLocaleString();
   } catch(e) {
     console.warn('Progression data failed:', e.message);
-    document.getElementById('s-db').textContent = 'Error';
+    document.getElementById('s-db').textContent = 'Error: ' + e.message;
   }
 }
 
@@ -600,14 +610,12 @@ async function init() {
     </div>`;
   document.getElementById('error-bar').style.display = 'none';
 
-  // Load both independently — don't let one failure kill the other
-  const [listingsResult, progResult] = await Promise.allSettled([
-    loadListings(),
-    loadProgressionData()
-  ]);
+  // Load listings first, then progression (progression needs player IDs from listings)
+  await loadListings();
+  const [progResult] = await Promise.allSettled([loadProgressionData()]);
+  const listingsResult = { status: 'fulfilled' };
 
   const errors = [];
-  if (listingsResult.status === 'rejected') errors.push(`Listings: ${listingsResult.reason.message}`);
   if (progResult.status === 'rejected') errors.push(`Progression DB: ${progResult.reason.message}`);
 
   if (errors.length) {
