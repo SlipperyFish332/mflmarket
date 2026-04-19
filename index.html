@@ -259,6 +259,13 @@
 </div>
 
 <div class="main">
+  <div style="padding:.5rem 2rem;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.75rem;">
+    <span style="font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);font-weight:600;">Avg Price Method:</span>
+    <button id="avg-mode-exact" class="ptog active-green" onclick="setAvgMode('exact')">Exact (same pos/ovr/age)</button>
+    <button id="avg-mode-broad" class="ptog" onclick="setAvgMode('broad')">Broad (±1 ovr, ±1 age)</button>
+    <span style="font-size:.7rem;color:var(--text-dim);margin-left:.5rem;" id="avg-mode-desc">Matches same position, overall and age</span>
+  </div>
+
   <div class="stats-row">
     <div class="stat-chip"><div class="sc-label">Listings</div><div class="sc-val" id="s-total">—</div></div>
     <div class="stat-chip"><div class="sc-label">Showing</div><div class="sc-val" id="s-showing">—</div></div>
@@ -305,6 +312,7 @@ let currentPage = 1;
 let progFilter = 'any';
 let dbLoaded = false;
 let avgPriceMap = {}; // player key -> avg price
+let avgPriceMode = 'exact'; // 'exact' or 'broad'
 
 // ─── FETCH SUPABASE PROGRESSION DATA ─────────────────────────────────────────
 // Only fetches the specific player IDs present in the current listings
@@ -412,8 +420,9 @@ async function loadAvgPrices() {
       'Authorization': `Bearer ${TRANSFERS_KEY}`
     };
 
-    // Fetch all sales matching any of our overalls (excluding 0.01 noise)
-    const overallFilter = overalls.map(o => `overall=eq.${o}`).join(',');
+    // Fetch all sales matching our overalls + ovr+1 (for broad mode)
+    const overallsWithBroad = [...new Set([...overalls, ...overalls.map(o => o + 1)])];
+    const overallFilter = overallsWithBroad.map(o => `overall=eq.${o}`).join(',');
     const res = await fetch(
       `${TRANSFERS_URL}/rest/v1/mfl_transfers_players?select=overall,age,position,price&price=gt.0.01&or=(${overallFilter})&limit=5000`,
       { headers: tHdrs }
@@ -445,16 +454,51 @@ async function loadAvgPrices() {
   }
 }
 
+function setAvgMode(mode) {
+  avgPriceMode = mode;
+  document.getElementById('avg-mode-exact').classList.toggle('active-green', mode === 'exact');
+  document.getElementById('avg-mode-broad').classList.toggle('active-green', mode === 'broad');
+  document.getElementById('avg-mode-exact').classList.toggle('ptog', true);
+  document.getElementById('avg-mode-broad').classList.toggle('ptog', true);
+  document.getElementById('avg-mode-desc').textContent = mode === 'exact'
+    ? 'Matches same position, overall and age'
+    : 'Matches same position, overall or +1, age or +1 year older';
+  renderTable();
+}
+
 function getAvgPrice(listing) {
   const m = listing.player?.metadata || {};
   const positions = m.positions || [];
   const overall = m.overall;
   const age = m.age;
-  for (const pos of positions) {
-    const key = `${pos}|${overall}|${age}`;
-    if (avgPriceMap[key] != null) return avgPriceMap[key];
+
+  if (avgPriceMode === 'exact') {
+    for (const pos of positions) {
+      const key = `${pos}|${overall}|${age}`;
+      if (avgPriceMap[key] != null) return avgPriceMap[key];
+    }
+    return null;
   }
-  return null;
+
+  // Broad mode: same pos, ovr or ovr+1, age or age+1
+  const ovrOptions = [overall, overall + 1];
+  const ageOptions = [age, age + 1];
+  const matchedPrices = [];
+
+  for (const pos of positions) {
+    for (const o of ovrOptions) {
+      for (const a of ageOptions) {
+        const key = `${pos}|${o}|${a}`;
+        if (avgPriceMap[key] != null) {
+          // We need the raw prices to average them together
+          matchedPrices.push(avgPriceMap[key]);
+        }
+      }
+    }
+  }
+
+  if (!matchedPrices.length) return null;
+  return matchedPrices.reduce((a, b) => a + b, 0) / matchedPrices.length;
 }
 
 // ─── FILTERS ─────────────────────────────────────────────────────────────────
