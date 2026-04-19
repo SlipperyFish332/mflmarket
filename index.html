@@ -290,6 +290,8 @@
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
 const SUPABASE_URL = 'https://dmaadocmrhfzbhweznil.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_NLKRB2kFO6J1DckCJP1Jlw_Pu2nR4bO';
+const TRANSFERS_URL = 'https://ruwyyarxmgvhpdcbapyj.supabase.co';
+const TRANSFERS_KEY = 'sb_publishable_NzMljevjYWnZyVzCD-rJ4A_5iWABhwH';
 const PROXY = 'https://mfl-proxy.kustom2-02.workers.dev';
 const MFL_LISTINGS_BASE = 'https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/listings?limit=25&type=PLAYER&status=AVAILABLE&view=full';
 const PAGE_SIZE = 50;
@@ -302,6 +304,7 @@ let progMap = {}; // player_id -> { sos, current, changes }
 let currentPage = 1;
 let progFilter = 'any';
 let dbLoaded = false;
+let avgPriceMap = {}; // player key -> avg price
 
 // ─── FETCH SUPABASE PROGRESSION DATA ─────────────────────────────────────────
 // Only fetches the specific player IDs present in the current listings
@@ -386,6 +389,72 @@ async function loadListings() {
   }
 
   document.getElementById('last-updated').textContent = `Updated ${new Date().toLocaleTimeString()}`;
+}
+
+// ─── FETCH AVERAGE PRICES FROM TRANSFER TRACKER ──────────────────────────────
+async function loadAvgPrices() {
+  try {
+    // Get unique position/overall/age combos from current listings
+    const combos = listings.map(l => {
+      const m = l.player?.metadata || {};
+      const pos = (m.positions || [])[0] || '';
+      return { overall: m.overall, age: m.age, position: pos };
+    }).filter(c => c.overall && c.age && c.position);
+
+    if (!combos.length) return;
+
+    // Build OR filter for each combo
+    // Supabase doesn't support complex OR across multiple columns easily,
+    // so fetch by overall range and filter client-side
+    const overalls = [...new Set(combos.map(c => c.overall))];
+    const tHdrs = {
+      'apikey': TRANSFERS_KEY,
+      'Authorization': `Bearer ${TRANSFERS_KEY}`
+    };
+
+    // Fetch all sales matching any of our overalls (excluding 0.01 noise)
+    const overallFilter = overalls.map(o => `overall=eq.${o}`).join(',');
+    const res = await fetch(
+      `${TRANSFERS_URL}/rest/v1/mfl_transfers_players?select=overall,age,position,price&price=gt.0.01&or=(${overallFilter})&limit=5000`,
+      { headers: tHdrs }
+    );
+    if (!res.ok) throw new Error(`Transfers fetch error: ${res.status}`);
+    const sales = await res.json();
+
+    // Group by position|overall|age and calculate avg
+    const groups = {};
+    sales.forEach(s => {
+      if (!s.price || s.price <= 0.01) return;
+      // Match any position in the comma-separated list
+      const positions = (s.position || '').split(',').map(p => p.trim());
+      positions.forEach(pos => {
+        const key = `${pos}|${s.overall}|${s.age}`;
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(s.price);
+      });
+    });
+
+    avgPriceMap = {};
+    Object.entries(groups).forEach(([key, prices]) => {
+      avgPriceMap[key] = prices.reduce((a, b) => a + b, 0) / prices.length;
+    });
+
+    console.log(`Avg prices loaded: ${Object.keys(avgPriceMap).length} combos from ${sales.length} sales`);
+  } catch(e) {
+    console.warn('Avg price load failed:', e.message);
+  }
+}
+
+function getAvgPrice(listing) {
+  const m = listing.player?.metadata || {};
+  const positions = m.positions || [];
+  const overall = m.overall;
+  const age = m.age;
+  for (const pos of positions) {
+    const key = `${pos}|${overall}|${age}`;
+    if (avgPriceMap[key] != null) return avgPriceMap[key];
+  }
+  return null;
 }
 
 // ─── FILTERS ─────────────────────────────────────────────────────────────────
@@ -481,6 +550,21 @@ function resetFilters() {
 }
 
 // ─── RENDER ───────────────────────────────────────────────────────────────────
+function renderAvgPrice(listing) {
+  const avg = getAvgPrice(listing);
+  if (avg == null) return '<span style="color:var(--text-dim);font-size:.75rem;">No data</span>';
+  const price = listing.price || 0;
+  const diff = price - avg;
+  const pct = avg > 0 ? ((diff / avg) * 100).toFixed(0) : 0;
+  let diffHtml = '';
+  if (Math.abs(diff) > 0.01) {
+    const cls = diff > 0 ? 'color:var(--red)' : 'color:var(--green)';
+    const sign = diff > 0 ? '+' : '';
+    diffHtml = `<span style="${cls};font-size:.7rem;margin-left:4px;">${sign}${pct}%</span>`;
+  }
+  return `<span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;color:var(--text)">${avg.toFixed(2)}</span>${diffHtml}`;
+}
+
 function fmtListed(ts) {
   if (!ts) return '—';
   const now = Date.now();
@@ -564,6 +648,7 @@ function renderTable() {
       <td>${typeBadge}</td>
       <td><span class="price-val">${l.price ?? '—'}</span></td>
       <td class="listed-time" data-ts="${l.createdDateTime || 0}">${fmtListed(l.createdDateTime)}</td>
+      <td>${renderAvgPrice(l)}</td>
       <td>${l.sellerName || '—'}</td>
       <td>${renderProgression(pid)}</td>
     </tr>`;
@@ -585,6 +670,7 @@ function renderTable() {
           <th>Type</th>
           <th>Price (Flow)</th>
           <th>Listed</th>
+          <th>Avg Sale Price</th>
           <th>Seller</th>
           <th>Season Progression</th>
         </tr>
@@ -616,6 +702,9 @@ async function init() {
     document.getElementById('error-bar').textContent = `Listings failed: ${listingsResult.reason.message}`;
     document.getElementById('error-bar').style.display = 'block';
   }
+
+  // Load avg prices from transfer tracker
+  await Promise.allSettled([loadAvgPrices()]);
 
   // Always try progression even if listings partially failed
   const [progResult] = await Promise.allSettled([loadProgressionData()]);
