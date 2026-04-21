@@ -969,19 +969,33 @@ function renderContractRates() {
     return;
   }
 
-  // Build flat rows: one row per OVR+div combo
   const rows = [];
   ovrs.forEach(ovr => {
-    const divs = Object.keys(crData[ovr]).map(Number).sort((a,b) => a - b);
-    divs.forEach(div => {
-      if (divFilter && div !== parseInt(divFilter)) return;
-      const prices = crData[ovr][div];
-      if (!prices.length) return;
-      const avg = prices.reduce((a,b) => a+b, 0) / prices.length;
-      const name = DIV_NAMES[div] || `Div ${div}`;
-      const css = DIV_CSS[div] || 'unknown';
-      rows.push({ ovr, div, name, css, avg, count: prices.length });
+    // Collect all non-zero contracts across all divs (or filtered div)
+    const allContracts = []; // { div, rev }
+    Object.keys(crData[ovr]).forEach(div => {
+      if (divFilter && parseInt(div) !== parseInt(divFilter)) return;
+      crData[ovr][div].forEach(rev => {
+        if (rev > 0) allContracts.push({ div: parseInt(div), rev });
+      });
     });
+
+    if (!allContracts.length) return;
+
+    // Find most common division (by contract count, excluding 0%)
+    const divCounts = {};
+    allContracts.forEach(c => {
+      divCounts[c.div] = (divCounts[c.div] || 0) + 1;
+    });
+    const mostCommonDiv = parseInt(Object.keys(divCounts).sort((a,b) => divCounts[b] - divCounts[a])[0]);
+
+    // Average rev share across ALL non-zero contracts (or filtered div)
+    const avg = allContracts.reduce((s,c) => s + c.rev, 0) / allContracts.length;
+    const total = allContracts.length;
+
+    const name = DIV_NAMES[mostCommonDiv] || `Div ${mostCommonDiv}`;
+    const css = DIV_CSS[mostCommonDiv] || 'unknown';
+    rows.push({ ovr, div: mostCommonDiv, name, css, avg, count: total });
   });
 
   if (!rows.length) {
@@ -989,7 +1003,7 @@ function renderContractRates() {
     return;
   }
 
-  document.getElementById('cr-result-count').textContent = `${rows.length} rows`;
+  document.getElementById('cr-result-count').textContent = `${rows.length} OVR ratings`;
 
   const tableRows = rows.map(r => `<tr>
     <td><span style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:1.1rem;">${r.ovr}</span></td>
@@ -1003,9 +1017,9 @@ function renderContractRates() {
       <thead>
         <tr style="background:var(--surface2);border-bottom:1px solid var(--border);">
           <th style="padding:.65rem .9rem;text-align:left;font-family:'Barlow Condensed',sans-serif;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);width:80px;">OVR</th>
-          <th style="padding:.65rem .9rem;text-align:left;font-family:'Barlow Condensed',sans-serif;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);">Division</th>
+          <th style="padding:.65rem .9rem;text-align:left;font-family:'Barlow Condensed',sans-serif;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);">Most Common Div</th>
           <th style="padding:.65rem .9rem;text-align:left;font-family:'Barlow Condensed',sans-serif;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);">Avg Rev Share</th>
-          <th style="padding:.65rem .9rem;text-align:left;font-family:'Barlow Condensed',sans-serif;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);">Contracts</th>
+          <th style="padding:.65rem .9rem;text-align:left;font-family:'Barlow Condensed',sans-serif;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);">Contracts (non-zero)</th>
         </tr>
       </thead>
       <tbody>${tableRows}</tbody>
