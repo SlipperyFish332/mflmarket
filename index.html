@@ -186,6 +186,32 @@
 
     /* ERROR */
     .error-bar { background: rgba(255,71,87,.08); border: 1px solid rgba(255,71,87,.2); color: var(--red); padding: .75rem 1.25rem; border-radius: 6px; margin-bottom: 1.25rem; font-size: .82rem; display: none; }
+
+    /* PAGE TABS */
+    .page-tabs { background: var(--surface); border-bottom: 1px solid var(--border); display: flex; gap: 0; }
+    .page-tab { padding: .75rem 1.75rem; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: .85rem; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all .15s; }
+    .page-tab:hover { color: var(--text); }
+    .page-tab.active { color: var(--green); border-bottom-color: var(--green); }
+
+    /* CONTRACT RATES */
+    .cr-filters { background: var(--surface); border-bottom: 1px solid var(--border); padding: .9rem 2rem; display: flex; gap: .75rem; flex-wrap: wrap; align-items: flex-end; }
+    .cr-table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .cr-table-top { padding: .9rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .cr-table-top h2 { font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 1rem; text-transform: uppercase; letter-spacing: .08em; }
+    .div-badge { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: .72rem; font-weight: 700; font-family: 'Barlow Condensed', sans-serif; letter-spacing: .04em; }
+    .div-gold    { background: rgba(255,211,42,.15); color: #ffd32a; border: 1px solid rgba(255,211,42,.3); }
+    .div-silver  { background: rgba(192,192,192,.15); color: #c0c0c0; border: 1px solid rgba(192,192,192,.3); }
+    .div-bronze  { background: rgba(205,127,50,.15); color: #cd7f32; border: 1px solid rgba(205,127,50,.3); }
+    .div-iron    { background: rgba(150,150,160,.15); color: #9696a0; border: 1px solid rgba(150,150,160,.3); }
+    .div-stone   { background: rgba(120,130,140,.15); color: #78828c; border: 1px solid rgba(120,130,140,.3); }
+    .div-ice     { background: rgba(61,201,245,.15); color: #3dc9f5; border: 1px solid rgba(61,201,245,.3); }
+    .div-spark   { background: rgba(255,159,67,.15); color: #ff9f43; border: 1px solid rgba(255,159,67,.3); }
+    .div-flint   { background: rgba(162,155,254,.15); color: #a29bfe; border: 1px solid rgba(162,155,254,.3); }
+    .div-pebble  { background: rgba(100,200,150,.15); color: #64c896; border: 1px solid rgba(100,200,150,.3); }
+    .div-unknown { background: var(--surface3); color: var(--text-muted); border: 1px solid var(--border2); }
+    .rev-val { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 1rem; color: var(--green); }
+    .sample-count { font-size: .68rem; color: var(--text-dim); }
+    .cr-loading { text-align: center; padding: 3rem; color: var(--text-muted); font-size: .85rem; }
   </style>
 </head>
 <body>
@@ -201,6 +227,70 @@
   </div>
 </header>
 
+<div class="page-tabs">
+  <div class="page-tab active" id="tab-listings" onclick="switchTab('listings')">📋 Listings</div>
+  <div class="page-tab" id="tab-contracts" onclick="switchTab('contracts')">📊 Contract Rates</div>
+</div>
+
+<!-- CONTRACT RATES PAGE -->
+<div id="page-contracts" style="display:none;">
+  <div class="cr-filters">
+    <div class="fg">
+      <label>Position</label>
+      <select id="cr-pos" onchange="loadContractRates()">
+        <option value="">All</option>
+        <option>GK</option><option>CB</option><option>LB</option><option>RB</option>
+        <option>LWB</option><option>RWB</option><option>CDM</option><option>CM</option>
+        <option>CAM</option><option>LM</option><option>RM</option><option>LW</option>
+        <option>RW</option><option>CF</option><option>ST</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label>Min OVR</label>
+      <input type="number" id="cr-min-ovr" placeholder="e.g. 50" min="30" max="99" value="50" oninput="loadContractRates()" />
+    </div>
+    <div class="fg">
+      <label>Max OVR</label>
+      <input type="number" id="cr-max-ovr" placeholder="e.g. 80" min="30" max="99" value="80" oninput="loadContractRates()" />
+    </div>
+    <div class="fg">
+      <label>Division</label>
+      <select id="cr-div" onchange="renderContractRates()">
+        <option value="">All Divisions</option>
+        <option value="1">Gold (Div 1)</option>
+        <option value="2">Silver (Div 2)</option>
+        <option value="3">Bronze (Div 3)</option>
+        <option value="4">Iron (Div 4)</option>
+        <option value="5">Stone (Div 5)</option>
+        <option value="6">Ice (Div 6)</option>
+        <option value="7">Spark (Div 7)</option>
+        <option value="8">Flint (Div 8)</option>
+        <option value="9">Pebble (Div 9)</option>
+        <option value="10">Dust (Div 10)</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label>First Position Only</label>
+      <select id="cr-firstpos" onchange="loadContractRates()">
+        <option value="false">No</option>
+        <option value="true">Yes</option>
+      </select>
+    </div>
+  </div>
+  <div class="main">
+    <div class="cr-table-wrap">
+      <div class="cr-table-top">
+        <h2>Avg Rev Share by OVR &amp; Division</h2>
+        <span class="result-count" id="cr-result-count"></span>
+      </div>
+      <div class="table-scroll">
+        <div id="cr-container"><div class="cr-loading">Select filters and data will load automatically</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="page-listings">
 <div class="filters-bar">
   <div class="fg">
     <label>Position</label>
@@ -300,6 +390,7 @@
     </div>
   </div>
 </div>
+</div><!-- end page-listings -->
 
 <script>
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
@@ -791,6 +882,142 @@ async function init() {
 }
 
 init();
+
+// ─── TAB SWITCHING ────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.getElementById('page-listings').style.display = tab === 'listings' ? '' : 'none';
+  document.getElementById('page-contracts').style.display = tab === 'contracts' ? '' : 'none';
+  document.getElementById('tab-listings').classList.toggle('active', tab === 'listings');
+  document.getElementById('tab-contracts').classList.toggle('active', tab === 'contracts');
+  if (tab === 'contracts' && Object.keys(crData).length === 0) loadContractRates();
+}
+
+// ─── CONTRACT RATES ───────────────────────────────────────────────────────────
+const DIV_NAMES = {
+  1: 'Gold', 2: 'Silver', 3: 'Bronze', 4: 'Iron', 5: 'Stone',
+  6: 'Ice', 7: 'Spark', 8: 'Flint', 9: 'Pebble', 10: 'Dust'
+};
+const DIV_CSS = {
+  1:'gold', 2:'silver', 3:'bronze', 4:'iron', 5:'stone',
+  6:'ice', 7:'spark', 8:'flint', 9:'pebble', 10:'unknown'
+};
+
+let crData = {}; // ovr -> div -> [revenueShares]
+let crLoading = false;
+
+async function loadContractRates() {
+  if (crLoading) return;
+  const minOvr = parseInt(document.getElementById('cr-min-ovr').value) || 50;
+  const maxOvr = parseInt(document.getElementById('cr-max-ovr').value) || 80;
+  const pos = document.getElementById('cr-pos').value;
+  const firstPos = document.getElementById('cr-firstpos').value;
+
+  if (minOvr > maxOvr) return;
+
+  crLoading = true;
+  crData = {};
+  document.getElementById('cr-container').innerHTML = `<div class="cr-loading"><div class="spinner" style="margin:0 auto 1rem;"></div>Loading contract data for OVR ${minOvr}–${maxOvr}...</div>`;
+
+  try {
+    // Fetch in chunks of 5 OVR at a time to avoid huge queries
+    const positions = pos ? `["${pos}"]` : '["GK","CB","LB","RB","LWB","RWB","CDM","CM","CAM","LM","RM","LW","RW","CF","ST"]';
+
+    // Batch: fetch each OVR individually for clean grouping
+    const ovrRange = [];
+    for (let o = minOvr; o <= maxOvr; o++) ovrRange.push(o);
+
+    // Fetch in batches of 5
+    for (let i = 0; i < ovrRange.length; i += 5) {
+      const batch = ovrRange.slice(i, i + 5);
+      await Promise.all(batch.map(async ovr => {
+        const query = `{ getContracts(minOvr: ${ovr}, maxOvr: ${ovr}, positions: ${positions}, firstPositionOnly: ${firstPos}) { revenueShare, club { division } } }`;
+        const res = await fetch(`${PROXY}/graphql`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query })
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const contracts = data?.data?.getContracts || [];
+        crData[ovr] = {};
+        contracts.forEach(c => {
+          const div = c.club?.division;
+          if (!div) return;
+          if (!crData[ovr][div]) crData[ovr][div] = [];
+          crData[ovr][div].push(c.revenueShare / 100); // stored as basis points e.g. 300 = 3%
+        });
+      }));
+      document.getElementById('cr-container').innerHTML = `<div class="cr-loading">Loading... ${Math.min(i + 5, ovrRange.length)}/${ovrRange.length} OVR ratings</div>`;
+      await new Promise(r => setTimeout(r, 100));
+    }
+  } catch(e) {
+    document.getElementById('cr-container').innerHTML = `<div class="cr-loading">Error: ${e.message}</div>`;
+    crLoading = false;
+    return;
+  }
+
+  crLoading = false;
+  renderContractRates();
+}
+
+function renderContractRates() {
+  const divFilter = document.getElementById('cr-div').value;
+  const ovrs = Object.keys(crData).map(Number).sort((a,b) => a - b);
+
+  if (!ovrs.length) {
+    document.getElementById('cr-container').innerHTML = '<div class="cr-loading">No data</div>';
+    return;
+  }
+
+  // Determine which divisions to show
+  const allDivs = divFilter
+    ? [parseInt(divFilter)]
+    : [...new Set(ovrs.flatMap(o => Object.keys(crData[o]).map(Number)))].sort((a,b) => a-b);
+
+  let totalRows = 0;
+  const rows = ovrs.map(ovr => {
+    const divCells = allDivs.map(div => {
+      const prices = crData[ovr]?.[div] || [];
+      if (!prices.length) return `<td style="color:var(--text-dim);font-size:.75rem;text-align:center;">—</td>`;
+      const avg = prices.reduce((a,b) => a+b, 0) / prices.length;
+      return `<td style="text-align:center;">
+        <span class="rev-val">${avg.toFixed(2)}%</span>
+        <br><span class="sample-count">${prices.length} contracts</span>
+      </td>`;
+    });
+    totalRows++;
+    return `<tr>
+      <td><span style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:1.1rem;">${ovr}</span></td>
+      ${divCells.join('')}
+    </tr>`;
+  }).join('');
+
+  const headers = allDivs.map(div => {
+    const name = DIV_NAMES[div] || `Div ${div}`;
+    const css = DIV_CSS[div] || 'unknown';
+    return `<th style="text-align:center;"><span class="div-badge div-${css}">${name}</span></th>`;
+  }).join('');
+
+  document.getElementById('cr-result-count').textContent = `${totalRows} OVR ratings`;
+  document.getElementById('cr-container').innerHTML = `
+    <table style="width:100%;border-collapse:collapse;font-size:.82rem;">
+      <thead>
+        <tr style="background:var(--surface2);border-bottom:1px solid var(--border);">
+          <th style="padding:.65rem .9rem;text-align:left;font-family:'Barlow Condensed',sans-serif;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);">OVR</th>
+          ${headers}
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+
+  // Add row styles
+  document.querySelectorAll('#cr-container tbody tr').forEach(tr => {
+    tr.style.borderBottom = '1px solid var(--border)';
+    tr.querySelectorAll('td').forEach(td => { td.style.padding = '.65rem .9rem'; });
+    tr.addEventListener('mouseover', () => tr.style.background = 'var(--surface2)');
+    tr.addEventListener('mouseout', () => tr.style.background = '');
+  });
+}
 </script>
 </body>
 </html>
