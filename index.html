@@ -257,16 +257,16 @@
       <label>Division</label>
       <select id="cr-div" onchange="renderContractRates()">
         <option value="">All Divisions</option>
-        <option value="1">Gold (Div 1)</option>
-        <option value="2">Silver (Div 2)</option>
-        <option value="3">Bronze (Div 3)</option>
-        <option value="4">Iron (Div 4)</option>
-        <option value="5">Stone (Div 5)</option>
-        <option value="6">Ice (Div 6)</option>
-        <option value="7">Spark (Div 7)</option>
-        <option value="8">Flint (Div 8)</option>
-        <option value="9">Pebble (Div 9)</option>
-        <option value="10">Dust (Div 10)</option>
+        <option value="1">Diamond (Div 1)</option>
+        <option value="2">Platinum (Div 2)</option>
+        <option value="3">Gold (Div 3)</option>
+        <option value="4">Silver (Div 4)</option>
+        <option value="5">Bronze (Div 5)</option>
+        <option value="6">Iron (Div 6)</option>
+        <option value="7">Stone (Div 7)</option>
+        <option value="8">Ice (Div 8)</option>
+        <option value="9">Spark (Div 9)</option>
+        <option value="10">Flint (Div 10)</option>
       </select>
     </div>
     <div class="fg">
@@ -894,8 +894,8 @@ function switchTab(tab) {
 
 // ─── CONTRACT RATES ───────────────────────────────────────────────────────────
 const DIV_NAMES = {
-  1: 'Gold', 2: 'Silver', 3: 'Bronze', 4: 'Iron', 5: 'Stone',
-  6: 'Ice', 7: 'Spark', 8: 'Flint', 9: 'Pebble', 10: 'Dust'
+  1: 'Diamond', 2: 'Platinum', 3: 'Gold', 4: 'Silver', 5: 'Bronze',
+  6: 'Iron', 7: 'Stone', 8: 'Ice', 9: 'Spark', 10: 'Flint'
 };
 const DIV_CSS = {
   1:'gold', 2:'silver', 3:'bronze', 4:'iron', 5:'stone',
@@ -969,51 +969,51 @@ function renderContractRates() {
     return;
   }
 
-  // Determine which divisions to show
-  const allDivs = divFilter
-    ? [parseInt(divFilter)]
-    : [...new Set(ovrs.flatMap(o => Object.keys(crData[o]).map(Number)))].sort((a,b) => a-b);
-
-  let totalRows = 0;
-  const rows = ovrs.map(ovr => {
-    const divCells = allDivs.map(div => {
-      const prices = crData[ovr]?.[div] || [];
-      if (!prices.length) return `<td style="color:var(--text-dim);font-size:.75rem;text-align:center;">—</td>`;
+  // Build flat rows: one row per OVR+div combo
+  const rows = [];
+  ovrs.forEach(ovr => {
+    const divs = Object.keys(crData[ovr]).map(Number).sort((a,b) => a - b);
+    divs.forEach(div => {
+      if (divFilter && div !== parseInt(divFilter)) return;
+      const prices = crData[ovr][div];
+      if (!prices.length) return;
       const avg = prices.reduce((a,b) => a+b, 0) / prices.length;
-      return `<td style="text-align:center;">
-        <span class="rev-val">${avg.toFixed(2)}%</span>
-        <br><span class="sample-count">${prices.length} contracts</span>
-      </td>`;
+      const name = DIV_NAMES[div] || `Div ${div}`;
+      const css = DIV_CSS[div] || 'unknown';
+      rows.push({ ovr, div, name, css, avg, count: prices.length });
     });
-    totalRows++;
-    return `<tr>
-      <td><span style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:1.1rem;">${ovr}</span></td>
-      ${divCells.join('')}
-    </tr>`;
-  }).join('');
+  });
 
-  const headers = allDivs.map(div => {
-    const name = DIV_NAMES[div] || `Div ${div}`;
-    const css = DIV_CSS[div] || 'unknown';
-    return `<th style="text-align:center;"><span class="div-badge div-${css}">${name}</span></th>`;
-  }).join('');
+  if (!rows.length) {
+    document.getElementById('cr-container').innerHTML = '<div class="cr-loading">No contracts found for these filters</div>';
+    return;
+  }
 
-  document.getElementById('cr-result-count').textContent = `${totalRows} OVR ratings`;
+  document.getElementById('cr-result-count').textContent = `${rows.length} rows`;
+
+  const tableRows = rows.map(r => `<tr>
+    <td><span style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:1.1rem;">${r.ovr}</span></td>
+    <td><span class="div-badge div-${r.css}">${r.name}</span></td>
+    <td><span class="rev-val">${r.avg.toFixed(2)}%</span></td>
+    <td><span style="font-family:'Barlow Condensed',sans-serif;font-weight:600;color:var(--text-muted);">${r.count.toLocaleString()}</span></td>
+  </tr>`).join('');
+
   document.getElementById('cr-container').innerHTML = `
     <table style="width:100%;border-collapse:collapse;font-size:.82rem;">
       <thead>
         <tr style="background:var(--surface2);border-bottom:1px solid var(--border);">
-          <th style="padding:.65rem .9rem;text-align:left;font-family:'Barlow Condensed',sans-serif;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);">OVR</th>
-          ${headers}
+          <th style="padding:.65rem .9rem;text-align:left;font-family:'Barlow Condensed',sans-serif;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);width:80px;">OVR</th>
+          <th style="padding:.65rem .9rem;text-align:left;font-family:'Barlow Condensed',sans-serif;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);">Division</th>
+          <th style="padding:.65rem .9rem;text-align:left;font-family:'Barlow Condensed',sans-serif;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);">Avg Rev Share</th>
+          <th style="padding:.65rem .9rem;text-align:left;font-family:'Barlow Condensed',sans-serif;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);">Contracts</th>
         </tr>
       </thead>
-      <tbody>${rows}</tbody>
+      <tbody>${tableRows}</tbody>
     </table>`;
 
-  // Add row styles
   document.querySelectorAll('#cr-container tbody tr').forEach(tr => {
     tr.style.borderBottom = '1px solid var(--border)';
-    tr.querySelectorAll('td').forEach(td => { td.style.padding = '.65rem .9rem'; });
+    tr.querySelectorAll('td').forEach(td => { td.style.padding = '.6rem .9rem'; });
     tr.addEventListener('mouseover', () => tr.style.background = 'var(--surface2)');
     tr.addEventListener('mouseout', () => tr.style.background = '');
   });
