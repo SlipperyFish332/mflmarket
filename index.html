@@ -230,6 +230,7 @@
 <div class="page-tabs">
   <div class="page-tab active" id="tab-listings" onclick="switchTab('listings')">📋 Listings</div>
   <div class="page-tab" id="tab-contracts" onclick="switchTab('contracts')">📊 Contract Rates</div>
+  <div class="page-tab" id="tab-pricing" onclick="switchTab('pricing')">💰 Player Pricing</div>
 </div>
 
 <!-- CONTRACT RATES PAGE -->
@@ -285,6 +286,79 @@
       </div>
       <div class="table-scroll">
         <div id="cr-container"><div class="cr-loading">Select filters and data will load automatically</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PLAYER PRICING PAGE -->
+<div id="page-pricing" style="display:none;">
+  <div class="cr-filters" style="flex-wrap:wrap;gap:.75rem;">
+    <div class="fg">
+      <label>Position</label>
+      <select id="pp-pos">
+        <option value="">All</option>
+        <option>GK</option><option>CB</option><option>LB</option><option>RB</option>
+        <option>LWB</option><option>RWB</option><option>CDM</option><option>CM</option>
+        <option>CAM</option><option>LM</option><option>RM</option><option>LW</option>
+        <option>RW</option><option>CF</option><option>ST</option>
+      </select>
+    </div>
+    <div class="fg"><label>Min OVR</label><input type="number" id="pp-min-ovr" placeholder="e.g. 78" min="30" max="99" style="width:80px" /></div>
+    <div class="fg"><label>Max OVR</label><input type="number" id="pp-max-ovr" placeholder="e.g. 82" min="30" max="99" style="width:80px" /></div>
+    <div class="fg"><label>Min Age</label><input type="number" id="pp-min-age" placeholder="e.g. 20" min="15" max="45" style="width:80px" /></div>
+    <div class="fg"><label>Max Age</label><input type="number" id="pp-max-age" placeholder="e.g. 28" min="15" max="45" style="width:80px" /></div>
+    <div class="fg">
+      <label>Date Range</label>
+      <select id="pp-days">
+        <option value="0">All time</option>
+        <option value="30">Last 30 days</option>
+        <option value="60">Last 60 days</option>
+        <option value="90" selected>Last 90 days</option>
+        <option value="180">Last 180 days</option>
+      </select>
+    </div>
+    <div class="fg"><label>First Pos Only</label>
+      <select id="pp-firstpos">
+        <option value="false">No</option>
+        <option value="true">Yes</option>
+      </select>
+    </div>
+    <button class="btn-reset" style="align-self:flex-end;background:var(--green);color:#000;border-color:var(--green);font-family:'Barlow Condensed',sans-serif;font-weight:700;padding:.45rem 1.25rem;border-radius:5px;cursor:pointer;" onclick="searchPricing()">Search</button>
+  </div>
+
+  <!-- Stat filters -->
+  <div style="background:var(--surface2);border-bottom:1px solid var(--border);padding:.75rem 2rem;display:flex;gap:.75rem;flex-wrap:wrap;align-items:flex-end;">
+    <span style="font-size:.65rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text-muted);font-weight:600;align-self:center;">Stat Filters (optional):</span>
+    <div class="fg"><label>Min PAC</label><input type="number" id="pp-pac" placeholder="—" min="0" max="99" style="width:70px" /></div>
+    <div class="fg"><label>Min SHO</label><input type="number" id="pp-sho" placeholder="—" min="0" max="99" style="width:70px" /></div>
+    <div class="fg"><label>Min PAS</label><input type="number" id="pp-pas" placeholder="—" min="0" max="99" style="width:70px" /></div>
+    <div class="fg"><label>Min DRI</label><input type="number" id="pp-dri" placeholder="—" min="0" max="99" style="width:70px" /></div>
+    <div class="fg"><label>Min DEF</label><input type="number" id="pp-def" placeholder="—" min="0" max="99" style="width:70px" /></div>
+    <div class="fg"><label>Min PHY</label><input type="number" id="pp-phy" placeholder="—" min="0" max="99" style="width:70px" /></div>
+    <div class="fg"><label>Min GK</label><input type="number" id="pp-gk" placeholder="—" min="0" max="99" style="width:70px" /></div>
+  </div>
+
+  <div class="main">
+    <!-- Summary cards -->
+    <div id="pp-summary" style="display:none;margin-bottom:1.5rem;">
+      <div class="stats-row">
+        <div class="stat-chip"><div class="sc-label">Sales Found</div><div class="sc-val" id="pp-s-total">—</div></div>
+        <div class="stat-chip"><div class="sc-label">Avg Price</div><div class="sc-val" id="pp-s-avg">—</div></div>
+        <div class="stat-chip"><div class="sc-label">Median Price</div><div class="sc-val" id="pp-s-median">—</div></div>
+        <div class="stat-chip"><div class="sc-label">Min Price</div><div class="sc-val" id="pp-s-min">—</div></div>
+        <div class="stat-chip"><div class="sc-label">Max Price</div><div class="sc-val" id="pp-s-max">—</div></div>
+      </div>
+    </div>
+
+    <!-- Sales table -->
+    <div class="cr-table-wrap">
+      <div class="cr-table-top">
+        <h2>Historical Sales</h2>
+        <span class="result-count" id="pp-result-count"></span>
+      </div>
+      <div class="table-scroll">
+        <div id="pp-container"><div class="cr-loading">Set filters above and click Search</div></div>
       </div>
     </div>
   </div>
@@ -885,10 +959,10 @@ init();
 
 // ─── TAB SWITCHING ────────────────────────────────────────────────────────────
 function switchTab(tab) {
-  document.getElementById('page-listings').style.display = tab === 'listings' ? '' : 'none';
-  document.getElementById('page-contracts').style.display = tab === 'contracts' ? '' : 'none';
-  document.getElementById('tab-listings').classList.toggle('active', tab === 'listings');
-  document.getElementById('tab-contracts').classList.toggle('active', tab === 'contracts');
+  ['listings','contracts','pricing'].forEach(t => {
+    document.getElementById(`page-${t}`).style.display = t === tab ? '' : 'none';
+    document.getElementById(`tab-${t}`).classList.toggle('active', t === tab);
+  });
   if (tab === 'contracts' && Object.keys(crData).length === 0) loadContractRates();
 }
 
@@ -1031,6 +1105,144 @@ function renderContractRates() {
     tr.addEventListener('mouseover', () => tr.style.background = 'var(--surface2)');
     tr.addEventListener('mouseout', () => tr.style.background = '');
   });
+}
+
+// ─── PLAYER PRICING ───────────────────────────────────────────────────────────
+async function searchPricing() {
+  const pos     = document.getElementById('pp-pos').value;
+  const minOvr  = parseInt(document.getElementById('pp-min-ovr').value) || null;
+  const maxOvr  = parseInt(document.getElementById('pp-max-ovr').value) || null;
+  const minAge  = parseInt(document.getElementById('pp-min-age').value) || null;
+  const maxAge  = parseInt(document.getElementById('pp-max-age').value) || null;
+  const days    = parseInt(document.getElementById('pp-days').value) || 0;
+  const firstPos = document.getElementById('pp-firstpos').value;
+
+  // Stat filters (client-side)
+  const minPac = parseInt(document.getElementById('pp-pac').value) || 0;
+  const minSho = parseInt(document.getElementById('pp-sho').value) || 0;
+  const minPas = parseInt(document.getElementById('pp-pas').value) || 0;
+  const minDri = parseInt(document.getElementById('pp-dri').value) || 0;
+  const minDef = parseInt(document.getElementById('pp-def').value) || 0;
+  const minPhy = parseInt(document.getElementById('pp-phy').value) || 0;
+  const minGk  = parseInt(document.getElementById('pp-gk').value) || 0;
+
+  if (!minOvr && !maxOvr && !pos) {
+    alert('Please enter at least a position or OVR range');
+    return;
+  }
+
+  document.getElementById('pp-container').innerHTML = `<div class="cr-loading"><div class="spinner" style="margin:0 auto 1rem;"></div>Fetching sales data...</div>`;
+  document.getElementById('pp-summary').style.display = 'none';
+  document.getElementById('pp-result-count').textContent = '';
+
+  try {
+    const positions = pos ? `["${pos}"]` : '["GK","CB","LB","RB","LWB","RWB","CDM","CM","CAM","LM","RM","LW","RW","CF","ST"]';
+    const qMinOvr = minOvr ?? 30;
+    const qMaxOvr = maxOvr ?? 99;
+    const qMinAge = minAge ?? 15;
+    const qMaxAge = maxAge ?? 45;
+
+    const query = `{ getSales(type: "PLAYER", limit: 500, minOvr: ${qMinOvr}, maxOvr: ${qMaxOvr}, positions: ${positions}, minAge: ${qMinAge}, maxAge: ${qMaxAge}, firstPositionOnly: ${firstPos}) {
+      executionDate, price, age, overall, positions,
+      player { id, firstName, lastName, pace, shooting, passing, dribbling, defense, physical, goalkeeping }
+    } }`;
+
+    const res = await fetch(`${PROXY}/graphql`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query })
+    });
+    if (!res.ok) throw new Error(`GraphQL error: ${res.status}`);
+    const data = await res.json();
+    let sales = data?.data?.getSales || [];
+
+    // Date filter
+    if (days > 0) {
+      const cutoff = Date.now() - days * 86400000;
+      sales = sales.filter(s => s.executionDate && new Date(s.executionDate).getTime() >= cutoff);
+    }
+
+    // Stat filters (client-side)
+    sales = sales.filter(s => {
+      const p = s.player || {};
+      if (minPac && (p.pace      || 0) < minPac) return false;
+      if (minSho && (p.shooting  || 0) < minSho) return false;
+      if (minPas && (p.passing   || 0) < minPas) return false;
+      if (minDri && (p.dribbling || 0) < minDri) return false;
+      if (minDef && (p.defense   || 0) < minDef) return false;
+      if (minPhy && (p.physical  || 0) < minPhy) return false;
+      if (minGk  && (p.goalkeeping||0) < minGk)  return false;
+      return true;
+    });
+
+    if (!sales.length) {
+      document.getElementById('pp-container').innerHTML = '<div class="cr-loading">No sales found for these filters</div>';
+      return;
+    }
+
+    // Summary stats
+    const prices = sales.map(s => s.price).sort((a,b) => a-b);
+    const avg = prices.reduce((a,b) => a+b, 0) / prices.length;
+    const median = prices.length % 2 === 0
+      ? (prices[prices.length/2-1] + prices[prices.length/2]) / 2
+      : prices[Math.floor(prices.length/2)];
+
+    document.getElementById('pp-s-total').textContent  = prices.length.toLocaleString();
+    document.getElementById('pp-s-avg').textContent    = avg.toFixed(2);
+    document.getElementById('pp-s-median').textContent = median.toFixed(2);
+    document.getElementById('pp-s-min').textContent    = prices[0].toFixed(2);
+    document.getElementById('pp-s-max').textContent    = prices[prices.length-1].toFixed(2);
+    document.getElementById('pp-summary').style.display = '';
+    document.getElementById('pp-result-count').textContent = `${sales.length} sales`;
+
+    // Sort newest first
+    sales.sort((a,b) => new Date(b.executionDate) - new Date(a.executionDate));
+
+    const rows = sales.map(s => {
+      const p = s.player || {};
+      const name = p.firstName ? `${p.firstName} ${p.lastName}` : `ID ${p.id}`;
+      const pos2 = (s.positions || []).join(', ');
+      const date = s.executionDate ? s.executionDate.slice(0,10) : '—';
+      const isGk = (p.goalkeeping || 0) > 0;
+      const stats = isGk
+        ? `GK ${p.goalkeeping||'—'}`
+        : `PAC ${p.pace||'—'} · SHO ${p.shooting||'—'} · PAS ${p.passing||'—'} · DRI ${p.dribbling||'—'} · DEF ${p.defense||'—'} · PHY ${p.physical||'—'}`;
+
+      return `<tr>
+        <td><div style="font-weight:600;font-size:.85rem;">${name}</div><div style="font-size:.7rem;color:var(--text-muted);">${stats}</div></td>
+        <td><span class="pos-badge">${pos2}</span></td>
+        <td><span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;">${s.overall}</span></td>
+        <td>${s.age}</td>
+        <td><span class="price-val">${s.price}</span></td>
+        <td style="font-size:.75rem;color:var(--text-muted);">${date}</td>
+      </tr>`;
+    }).join('');
+
+    document.getElementById('pp-container').innerHTML = `
+      <table style="width:100%;border-collapse:collapse;font-size:.82rem;">
+        <thead>
+          <tr style="background:var(--surface2);border-bottom:1px solid var(--border);">
+            <th style="padding:.65rem .9rem;text-align:left;font-family:'Barlow Condensed',sans-serif;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);">Player</th>
+            <th style="padding:.65rem .9rem;font-family:'Barlow Condensed',sans-serif;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);">Pos</th>
+            <th style="padding:.65rem .9rem;font-family:'Barlow Condensed',sans-serif;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);">OVR</th>
+            <th style="padding:.65rem .9rem;font-family:'Barlow Condensed',sans-serif;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);">Age</th>
+            <th style="padding:.65rem .9rem;font-family:'Barlow Condensed',sans-serif;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);">Price (Flow)</th>
+            <th style="padding:.65rem .9rem;font-family:'Barlow Condensed',sans-serif;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);">Date</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+
+    document.querySelectorAll('#pp-container tbody tr').forEach(tr => {
+      tr.style.borderBottom = '1px solid var(--border)';
+      tr.querySelectorAll('td').forEach(td => { td.style.padding = '.6rem .9rem'; });
+      tr.addEventListener('mouseover', () => tr.style.background = 'var(--surface2)');
+      tr.addEventListener('mouseout', () => tr.style.background = '');
+    });
+
+  } catch(e) {
+    document.getElementById('pp-container').innerHTML = `<div class="cr-loading">Error: ${e.message}</div>`;
+  }
 }
 </script>
 </body>
