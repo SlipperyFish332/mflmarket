@@ -786,6 +786,72 @@ function resetFilters() {
   applyFilters();
 }
 
+// ─── ESTIMATED LIFETIME RETURN ───────────────────────────────────────────────
+// $ per 1% rev share at position #6 (6th place finish) per division
+const ELR_PER_1PCT = {
+  1: 12.9600, // Diamond
+  2:  6.2300, // Platinum
+  3:  3.0600, // Gold
+  4:  1.4400, // Silver
+  5:  0.7090, // Bronze
+  6:  0.3300, // Iron
+  7:  0.1590, // Stone
+  8:  0.0780, // Ice
+  9:  0.0370, // Spark
+  10: 0.0180, // Flint
+};
+
+const RETIREMENT_AGE = 35;
+
+function getELR(listing) {
+  const m = listing.player?.metadata || {};
+  const ovr = m.overall;
+  const age = m.age;
+  if (!ovr || !age) return null;
+
+  const seasonsLeft = Math.max(0, RETIREMENT_AGE - age);
+  if (seasonsLeft <= 0) return null;
+
+  // Find most common division for this OVR from crData
+  let division = null;
+  if (crData[ovr]) {
+    // Find div with most non-zero contracts
+    const divCounts = {};
+    Object.keys(crData[ovr]).forEach(div => {
+      const nonZero = crData[ovr][div].filter(r => r > 0).length;
+      if (nonZero > 0) divCounts[div] = nonZero;
+    });
+    const topDiv = Object.keys(divCounts).sort((a,b) => divCounts[b] - divCounts[a])[0];
+    if (topDiv) division = parseInt(topDiv);
+  }
+  if (!division) return null;
+
+  // Get avg rev share for this OVR in that division (non-zero only)
+  const revShares = (crData[ovr][division] || []).filter(r => r > 0);
+  if (!revShares.length) return null;
+  const avgRevShare = revShares.reduce((a,b) => a+b, 0) / revShares.length;
+
+  const dollarPer1Pct = ELR_PER_1PCT[division];
+  if (!dollarPer1Pct) return null;
+
+  const elr = seasonsLeft * avgRevShare * dollarPer1Pct;
+  return { elr, seasonsLeft, avgRevShare, division, divName: DIV_NAMES[division] || `Div ${division}` };
+}
+
+function renderELR(listing) {
+  const result = getELR(listing);
+  if (!result) {
+    return `<span style="color:var(--text-dim);font-size:.72rem;">No data</span>`;
+  }
+  const { elr, seasonsLeft, avgRevShare, divName } = result;
+  const css = Object.keys(DIV_NAMES).find(k => DIV_NAMES[k] === divName);
+  const divCss = DIV_CSS[css] || 'unknown';
+  return `<div style="display:flex;flex-direction:column;gap:2px;">
+    <span style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:1rem;color:var(--gold);">$${elr.toFixed(2)}</span>
+    <span style="font-size:.65rem;color:var(--text-muted);">${seasonsLeft}y · ${avgRevShare.toFixed(2)}% · <span class="div-badge div-${divCss}" style="font-size:.6rem;padding:1px 5px;">${divName}</span></span>
+  </div>`;
+}
+
 // ─── RENDER ───────────────────────────────────────────────────────────────────
 function renderAvgPrice(listing) {
   const avg = getAvgPrice(listing);
@@ -886,6 +952,7 @@ function renderTable() {
       <td><span class="price-val">${l.price ?? '—'}</span></td>
       <td class="listed-time" data-ts="${l.createdDateTime || 0}">${fmtListed(l.createdDateTime)}</td>
       <td>${renderAvgPrice(l)}</td>
+      <td>${renderELR(l)}</td>
       <td>${l.sellerName || '—'}</td>
       <td>${renderProgression(pid)}</td>
     </tr>`;
@@ -908,6 +975,7 @@ function renderTable() {
           <th>Price (Flow)</th>
           <th>Listed</th>
           <th>Avg Sale Price</th>
+          <th>ELR</th>
           <th>Seller</th>
           <th>Season Progression</th>
         </tr>
@@ -953,6 +1021,9 @@ async function init() {
 
   // Show whatever we managed to load
   setProgFilter('any');
+
+  // Background load contract rates for ELR (silently, no UI update needed)
+  loadContractRatesForELR();
 }
 
 init();
@@ -967,6 +1038,36 @@ function switchTab(tab) {
 }
 
 // ─── CONTRACT RATES ───────────────────────────────────────────────────────────
+
+// Lightweight version — only fetches OVRs needed for current listings (for ELR)
+async function loadContractRatesForELR() {
+  if (!listings.length) return;
+  const ovrs = [...new Set(listings.map(l => l.player?.metadata?.overall).filter(Boolean))];
+  const positions = '["GK","CB","LB","RB","LWB","RWB","CDM","CM","CAM","LM","RM","LW","RW","CF","ST"]';
+
+  for (let i = 0; i < ovrs.length; i += 5) {
+    const batch = ovrs.slice(i, i + 5);
+    await Promise.all(batch.map(async ovr => {
+      if (crData[ovr]) return; // already loaded
+      const query = `{ getContracts(minOvr: ${ovr}, maxOvr: ${ovr}, positions: ${positions}, firstPositionOnly: false) { revenueShare, club { division } } }`;
+      const res = await fetch(`${PROXY}/graphql`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query }) });
+      if (!res.ok) return;
+      const data = await res.json();
+      const contracts = data?.data?.getContracts || [];
+      crData[ovr] = {};
+      contracts.forEach(c => {
+        const div = c.club?.division;
+        if (!div) return;
+        if (!crData[ovr][div]) crData[ovr][div] = [];
+        crData[ovr][div].push(c.revenueShare / 100);
+      });
+    }));
+    await new Promise(r => setTimeout(r, 100));
+  }
+
+  // Re-render table with ELR now populated
+  renderTable();
+}
 const DIV_NAMES = {
   1: 'Diamond', 2: 'Platinum', 3: 'Gold', 4: 'Silver', 5: 'Bronze',
   6: 'Iron', 7: 'Stone', 8: 'Ice', 9: 'Spark', 10: 'Flint'
